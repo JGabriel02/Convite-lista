@@ -40,7 +40,7 @@ app.post('/confirm', (req, res) => {
 });
 
 // Rota para listar as confirmações
-app.get('/confirmations', (req, res) => {
+app.get('/', (req, res) => {
   const confirmations = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   res.json(confirmations);
 });
