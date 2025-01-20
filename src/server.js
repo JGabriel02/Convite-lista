@@ -21,26 +21,21 @@ pool.connect()
 
 // Endpoint para confirmar presença
 app.post('/confirm', async (req, res) => {
-  const { nome } = req.body;
-
-  if (!nome || nome.trim() === '') {
-    return res.status(400).json({ error: 'O nome é obrigatório' });
-  }
-
   try {
-    // Inserir o nome no banco de dados
-    const result = await pool.query(
-      'INSERT INTO lista (nome) VALUES ($1) RETURNING id',
-      [nome.trim()]
-    );
+    console.log('Requisição recebida:', req.body); // Loga o corpo da requisição
 
-    res.status(201).json({ message: 'Presença confirmada!', id: result.rows[0].id });
-  } catch (err) {
-    console.error('Erro ao salvar confirmação:', err);
-    res.status(500).json({ error: 'Erro ao salvar a confirmação. Tente novamente mais tarde.' });
+    const { nome } = req.body;
+    if (!nome || typeof nome !== 'string') {
+      return res.status(400).json({ message: 'Nome inválido ou ausente.' });
+    }
+
+    const result = await pool.query('INSERT INTO lista (nome) VALUES ($1) RETURNING *', [nome]);
+    res.status(201).json({ message: 'Confirmação registrada com sucesso.', data: result.rows[0] });
+  } catch (error) {
+    console.error('Erro no servidor:', error);
+    res.status(500).json({ message: 'Erro interno no servidor.' });
   }
 });
-
 // Endpoint para obter todas as confirmações
 app.get('/', async (req, res) => {
   try {
