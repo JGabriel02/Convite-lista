@@ -1,51 +1,58 @@
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-const fs = require('fs');
-const path = require('path');
+const { Pool } = require('pg');
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 3001;
 
-// Middleware
+// Configurar o middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// Caminho do arquivo JSON para armazenar confirmações
-const filePath = path.join(__dirname, 'confirmations.json');
+// Configuração do banco de dados com Neon
+const pool = new Pool({
+  connectionString: 'postgresql://neondb_owner:SGElKQW5oD1U@ep-green-rice-a5pam7q7.us-east-2.aws.neon.tech/neondb?sslmode=require',
+});
 
-// Inicializar o arquivo JSON se não existir
-if (!fs.existsSync(filePath)) {
-  fs.writeFileSync(filePath, JSON.stringify([]));
-}
+// Verificar conexão com o banco de dados
+pool.connect()
+  .then(() => console.log('Conectado ao banco de dados Neon'))
+  .catch((err) => console.error('Erro ao conectar ao banco de dados:', err));
 
-// Rota para salvar confirmações
-app.post('/confirm', (req, res) => {
-  const { name } = req.body;
+// Endpoint para confirmar presença
+app.post('/confirm', async (req, res) => {
+  const { nome } = req.body;
 
-  if (!name) {
-    return res.status(400).json({ error: 'O nome é obrigatório!' });
+  if (!nome || nome.trim() === '') {
+    return res.status(400).json({ error: 'O nome é obrigatório' });
   }
 
-  // Ler as confirmações existentes
-  const confirmations = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  try {
+    // Inserir o nome no banco de dados
+    const result = await pool.query(
+      'INSERT INTO lista (nome) VALUES ($1) RETURNING id',
+      [nome.trim()]
+    );
 
-  // Adicionar a nova confirmação
-  confirmations.push({ name, date: new Date().toISOString() });
-
-  // Salvar no arquivo JSON
-  fs.writeFileSync(filePath, JSON.stringify(confirmations, null, 2));
-
-  res.status(201).json({ message: 'Presença confirmada com sucesso!' });
+    res.status(201).json({ message: 'Presença confirmada!', id: result.rows[0].id });
+  } catch (err) {
+    console.error('Erro ao salvar confirmação:', err);
+    res.status(500).json({ error: 'Erro ao salvar a confirmação. Tente novamente mais tarde.' });
+  }
 });
 
-// Rota para listar as confirmações
-app.get('/', (req, res) => {
-  const confirmations = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  res.json(confirmations);
+// Endpoint para obter todas as confirmações
+app.get('/', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM lista ORDER BY id ASC');
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('Erro ao buscar confirmações:', err);
+    res.status(500).json({ error: 'Erro ao buscar as confirmações. Tente novamente mais tarde.' });
+  }
 });
 
-// Inicia o servidor
+// Iniciar o servidor
 app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
