@@ -39,7 +39,7 @@ app.post('/confirm', async (req, res) => {
 // Endpoint para obter todas as confirmações
 app.get('/', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM lista ORDER BY id ASC');
+    const result = await pool.query('SELECT * FROM lista');
     res.status(200).json(result.rows);
   } catch (err) {
     console.error('Erro ao buscar confirmações:', err);
